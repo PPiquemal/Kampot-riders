@@ -402,7 +402,7 @@ map.on('dragstart', () => {
 });
 
 const trackLine = L.polyline([], { color: '#e83040', weight: 4, opacity: 0.85, smoothFactor: 1 }).addTo(map);
-const refLine = L.polyline([], { color: '#8a7a6a', weight: 3, opacity: 0.55, dashArray: '8 6', smoothFactor: 1 });
+const refLine = L.polyline([], { color: '#00e5ff', weight: 3, opacity: 0.75, dashArray: '8 6', smoothFactor: 1 });
 let refTrackId = null;
 const posMarker = L.circleMarker([0, 0], { radius: 7, fillColor: '#4a90d4', fillOpacity: 1, stroke: true, color: '#fff', weight: 2 });
 const accCircle = L.circle([0, 0], { radius: 10, fillColor: '#4a90d4', fillOpacity: 0.08, stroke: true, color: '#4a90d4', weight: 1, opacity: 0.2 });
