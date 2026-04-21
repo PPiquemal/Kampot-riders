@@ -549,6 +549,7 @@ btnRecenter.addEventListener('click', () => {
 
 // --- GPS ---
 function onPosition(pos) {
+  state.lastGPSTime = Date.now();
   const { latitude: lat, longitude: lng, altitude: rawAlt, accuracy, speed: rawSpeed } = pos.coords;
   const time = pos.timestamp;
 
@@ -774,7 +775,7 @@ async function startRecording() {
   state.timerInterval = setInterval(updateTimers, 1000);
   if (!state.watchId) {
     state.watchId = navigator.geolocation.watchPosition(onPosition, onPositionError, {
-      enableHighAccuracy: true, maximumAge: 2000, timeout: 10000
+      enableHighAccuracy: true, maximumAge: 0, timeout: 27000
     });
   }
   autosaveInterval = setInterval(autosave, AUTOSAVE_INTERVAL);
@@ -1071,10 +1072,18 @@ async function init() {
   await openDB();
   checkRecovery();
   if ('geolocation' in navigator) {
-    state.watchId = navigator.geolocation.watchPosition(onPosition, onPositionError, {
-      enableHighAccuracy: true, maximumAge: 3000, timeout: 10000
-    });
+    const gpsOpts = { enableHighAccuracy: true, maximumAge: 0, timeout: 27000 };
+    state.watchId = navigator.geolocation.watchPosition(onPosition, onPositionError, gpsOpts);
     statusBadge.textContent = 'READY';
+
+    // iOS Safari fix: watchPosition can silently stall. Poll getCurrentPosition
+    // every 5s if no fix has arrived for >8s. This forces Safari to wake the GPS.
+    state.gpsPollingId = setInterval(() => {
+      const stale = !state.lastGPSTime || (Date.now() - state.lastGPSTime > 8000);
+      if (stale) {
+        navigator.geolocation.getCurrentPosition(onPosition, onPositionError, gpsOpts);
+      }
+    }, 5000);
   } else {
     toast('GPS not available on this device');
     statusBadge.textContent = 'NO GPS';

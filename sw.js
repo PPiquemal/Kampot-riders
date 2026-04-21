@@ -1,5 +1,5 @@
-// sw.js — Kampot Riders PWA — updated: 2026-04-10
-const CACHE_VERSION = 'kr-v2';
+// sw.js — Kampot Riders PWA — updated: 2026-04-21 (iOS GPS fix)
+const CACHE_VERSION = 'kr-v3';
 const STATIC_CACHE = CACHE_VERSION + '-static';
 const TILES_CACHE = CACHE_VERSION + '-tiles';
 
