@@ -1,87 +1,5 @@
 const DEFAULT_CENTER = [10.594, 104.162];
 const DEFAULT_ZOOM = 14;
-const GOOGLE_TILE_HOST = "https://tile.googleapis.com";
-
-function transparentTileDataUri() {
-  return "data:image/gif;base64,R0lGODlhAQABAAAAACwAAAAAAQABAAA=";
-}
-
-class GoogleSatelliteLayer extends L.TileLayer {
-  constructor(config, notifyFailure) {
-    super("", {
-      maxZoom: 20,
-      attribution: "&copy; Google",
-      crossOrigin: true
-    });
-    this.config = config;
-    this.notifyFailure = notifyFailure;
-    this.session = null;
-    this.sessionExpiryMs = 0;
-    this.pendingSession = null;
-  }
-
-  isConfigured() {
-    return Boolean(this.config.apiKey);
-  }
-
-  async ensureSession() {
-    if (!this.isConfigured()) return null;
-    if (this.session && Date.now() < this.sessionExpiryMs - 60000) return this.session;
-    if (this.pendingSession) return this.pendingSession;
-
-    this.pendingSession = fetch(`${GOOGLE_TILE_HOST}/v1/createSession?key=${encodeURIComponent(this.config.apiKey)}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        mapType: "satellite",
-        language: this.config.language,
-        region: this.config.region,
-        scale: "scaleFactor1x"
-      })
-    })
-      .then(async response => {
-        if (!response.ok) throw new Error(`Google session failed with status ${response.status}`);
-        const data = await response.json();
-        if (!data.session) throw new Error("Google session token missing");
-        this.session = data.session;
-        this.sessionExpiryMs = Number(data.expiry) * 1000 || Date.now() + 3600000;
-        return this.session;
-      })
-      .catch(error => {
-        this.notifyFailure(error);
-        throw error;
-      })
-      .finally(() => {
-        this.pendingSession = null;
-      });
-
-    return this.pendingSession;
-  }
-
-  createTile(coords, done) {
-    const tile = document.createElement("img");
-    tile.alt = "";
-    tile.setAttribute("role", "presentation");
-
-    this.ensureSession()
-      .then(session => {
-        if (!session) {
-          tile.src = transparentTileDataUri();
-          done(new Error("Google Satellite not configured"), tile);
-          return;
-        }
-        tile.onload = () => done(null, tile);
-        tile.onerror = error => done(error || new Error("Google tile failed"), tile);
-        tile.src = `${GOOGLE_TILE_HOST}/v1/2dtiles/${coords.z}/${coords.x}/${coords.y}?session=${encodeURIComponent(session)}&key=${encodeURIComponent(this.config.apiKey)}`;
-      })
-      .catch(error => {
-        tile.src = transparentTileDataUri();
-        done(error, tile);
-      });
-
-    return tile;
-  }
-}
 
 function layerLabel(layerId) {
   if (layerId === "osm") return "OSM map";
@@ -99,7 +17,7 @@ function fallbackSuggestion(layerId) {
   return { label: "Switch to OSM map", layerId: "osm", extra: "Cycle map is also available." };
 }
 
-export function createMapController({ selectedLayerId, googleConfig, onLayerSelected, onNotice, onLayerLabelChange }) {
+export function createMapController({ selectedLayerId, onLayerSelected, onNotice, onLayerLabelChange }) {
   const map = L.map("map", { zoomControl: false, attributionControl: true }).setView(DEFAULT_CENTER, DEFAULT_ZOOM);
   const trackLine = L.polyline([], { color: "#e83040", weight: 4, opacity: 0.85, smoothFactor: 1 }).addTo(map);
   const refLine = L.polyline([], { color: "#00e5ff", weight: 3, opacity: 0.75, dashArray: "8 6", smoothFactor: 1 });
@@ -129,8 +47,9 @@ export function createMapController({ selectedLayerId, googleConfig, onLayerSele
     maxZoom: 19,
     attribution: "&copy; OpenStreetMap contributors"
   });
-  const satelliteLayer = new GoogleSatelliteLayer(googleConfig, error => {
-    console.warn("[KR] Google Satellite session failed:", error);
+  const satelliteLayer = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+    maxZoom: 19,
+    attribution: "Tiles &copy; Esri"
   });
 
   const layers = { cycle: cycleLayer, osm: osmLayer, satellite: satelliteLayer };
@@ -200,18 +119,8 @@ export function createMapController({ selectedLayerId, googleConfig, onLayerSele
     if (layers[activeLayerId] && map.hasLayer(layers[activeLayerId])) {
       map.removeLayer(layers[activeLayerId]);
     }
-    if (requested === "satellite" && !satelliteLayer.isConfigured()) {
-      activeLayerId = "cycle";
-      cycleLayer.addTo(map);
-      onNotice({
-        text: "Google Satellite is not configured yet. Add a restricted Google Map Tiles API key in app.js, then try again.",
-        actionLabel: "Use Cycle map",
-        actionLayerId: "cycle"
-      });
-    } else {
-      activeLayerId = requested;
-      layers[activeLayerId].addTo(map);
-    }
+    activeLayerId = requested;
+    layers[activeLayerId].addTo(map);
     closeLayerMenu();
     setLayerButtonState(activeLayerId);
     updateOfflineBadge();

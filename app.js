@@ -24,20 +24,6 @@ const GPS_GAP_THRESHOLD_MS = 45000;
 const MAX_SEGMENT_DISTANCE = 500;
 const AUTOSAVE_INTERVAL = 10000;
 
-const runtimeConfig = globalThis.KAMPOT_RIDERS_CONFIG || {};
-
-const GOOGLE_SATELLITE_CONFIG = Object.freeze({
-  enabled: runtimeConfig.googleSatellite?.enabled ?? false,
-  apiKey: runtimeConfig.googleSatellite?.apiKey ?? "",
-  language: runtimeConfig.googleSatellite?.language ?? "en-US",
-  region: runtimeConfig.googleSatellite?.region ?? "KH"
-});
-
-// Static client-side apps cannot keep Google keys secret. If you enable Satellite,
-// use a restricted Google Maps Platform key limited to the published GitHub Pages
-// origin and Map Tiles API only. Runtime override is supported via:
-// window.KAMPOT_RIDERS_CONFIG = { googleSatellite: { enabled: true, apiKey: "..." } };
-
 const state = {
   recording: false,
   autoPaused: false,
@@ -687,12 +673,6 @@ async function init() {
   await openDB();
   mapController = createMapController({
     selectedLayerId: state.selectedLayer,
-    googleConfig: {
-      enabled: GOOGLE_SATELLITE_CONFIG.enabled,
-      apiKey: GOOGLE_SATELLITE_CONFIG.apiKey,
-      language: GOOGLE_SATELLITE_CONFIG.language,
-      region: GOOGLE_SATELLITE_CONFIG.region
-    },
     onLayerSelected: saveLayerSelection,
     onNotice: showMapNotice,
     onLayerLabelChange: label => {
