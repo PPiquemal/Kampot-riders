@@ -223,12 +223,15 @@ input {
   right: 12px;
   left: auto;
   display: flex;
-  gap: 4px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
   padding: 4px;
   border-radius: 18px;
   border: 1px solid rgba(212, 168, 67, 0.15);
 }
 
+.layer-toggle,
 .layer-option {
   border: none;
   border-radius: 14px;
@@ -240,6 +243,19 @@ input {
   letter-spacing: 0.04em;
   text-transform: uppercase;
   cursor: pointer;
+  text-align: center;
+}
+
+.layer-toggle {
+  min-width: 108px;
+  background: rgba(212, 168, 67, 0.14);
+  color: var(--gold);
+}
+
+.layer-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .layer-option.active {

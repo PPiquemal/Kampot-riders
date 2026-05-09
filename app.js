@@ -689,7 +689,7 @@ async function init() {
     selectedLayerId: state.selectedLayer,
     googleConfig: {
       enabled: GOOGLE_SATELLITE_CONFIG.enabled,
-      apiKey: GOOGLE_SATELLITE_CONFIG.enabled ? GOOGLE_SATELLITE_CONFIG.apiKey : "",
+      apiKey: GOOGLE_SATELLITE_CONFIG.apiKey,
       language: GOOGLE_SATELLITE_CONFIG.language,
       region: GOOGLE_SATELLITE_CONFIG.region
     },

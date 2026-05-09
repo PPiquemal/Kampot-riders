@@ -135,6 +135,9 @@ export function createMapController({ selectedLayerId, googleConfig, onLayerSele
 
   const layers = { cycle: cycleLayer, osm: osmLayer, satellite: satelliteLayer };
   const layerButtons = [...document.querySelectorAll(".layer-option")];
+  const layerToggle = document.getElementById("layerToggle");
+  const layerToggleLabel = document.getElementById("layerToggleLabel");
+  const layerMenu = document.getElementById("layerMenu");
   const offlineBadge = document.getElementById("offlineBadge");
   let activeLayerId = "cycle";
   let autoFollow = true;
@@ -145,7 +148,20 @@ export function createMapController({ selectedLayerId, googleConfig, onLayerSele
     layerButtons.forEach(button => {
       button.classList.toggle("active", button.dataset.layer === layerId);
     });
-    onLayerLabelChange(layerLabel(layerId));
+    const label = layerLabel(layerId);
+    layerToggleLabel.textContent = label;
+    onLayerLabelChange(label);
+  }
+
+  function closeLayerMenu() {
+    layerMenu.classList.add("hidden");
+    layerToggle.setAttribute("aria-expanded", "false");
+  }
+
+  function toggleLayerMenu() {
+    const opening = layerMenu.classList.contains("hidden");
+    layerMenu.classList.toggle("hidden");
+    layerToggle.setAttribute("aria-expanded", opening ? "true" : "false");
   }
 
   function updateOfflineBadge() {
@@ -188,7 +204,7 @@ export function createMapController({ selectedLayerId, googleConfig, onLayerSele
       activeLayerId = "cycle";
       cycleLayer.addTo(map);
       onNotice({
-        text: "Google Satellite is not configured yet. Add a restricted Map Tiles API key in app.js, then try again.",
+        text: "Google Satellite is not configured yet. Add a restricted Google Map Tiles API key in app.js, then try again.",
         actionLabel: "Use Cycle map",
         actionLayerId: "cycle"
       });
@@ -196,6 +212,7 @@ export function createMapController({ selectedLayerId, googleConfig, onLayerSele
       activeLayerId = requested;
       layers[activeLayerId].addTo(map);
     }
+    closeLayerMenu();
     setLayerButtonState(activeLayerId);
     updateOfflineBadge();
     if (!silent) onLayerSelected(activeLayerId);
@@ -204,10 +221,17 @@ export function createMapController({ selectedLayerId, googleConfig, onLayerSele
   layerButtons.forEach(button => {
     button.addEventListener("click", () => setActiveLayer(button.dataset.layer));
   });
+  layerToggle.addEventListener("click", toggleLayerMenu);
+  document.addEventListener("click", event => {
+    if (!event.target.closest("#layerSelector")) {
+      closeLayerMenu();
+    }
+  });
 
   map.on("dragstart", () => {
     autoFollow = false;
     document.getElementById("btnRecenter").classList.remove("following");
+    closeLayerMenu();
   });
 
   window.addEventListener("online", updateOfflineBadge);
