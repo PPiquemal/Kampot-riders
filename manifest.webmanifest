@@ -1,0 +1,25 @@
+{
+  "name": "Kampot Riders",
+  "short_name": "KR Riders",
+  "description": "Local-first cycling tracker for Kampot Riders.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1a0a0a",
+  "theme_color": "#1a0a0a",
+  "icons": [
+    {
+      "src": "./assets/icon-192.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "./assets/icon-512.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

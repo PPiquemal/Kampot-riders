@@ -1,64 +1,116 @@
-// sw.js — Kampot Riders PWA — updated: 2026-04-21 (iOS GPS fix)
-const CACHE_VERSION = 'kr-v3';
-const STATIC_CACHE = CACHE_VERSION + '-static';
-const TILES_CACHE = CACHE_VERSION + '-tiles';
+const CACHE_VERSION = "kr-v7";
+const STATIC_CACHE = `${CACHE_VERSION}-static`;
+const TILE_CACHE = `${CACHE_VERSION}-osm-tiles`;
+const TILE_CACHE_LIMIT = 250;
 
-const STATIC_ASSETS = [
-  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
-  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
-  'https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Noto+Sans+Khmer:wght@400;700&display=swap',
+const APP_SHELL = [
+  "./",
+  "./index.html",
+  "./styles.css",
+  "./app.js",
+  "./map.js",
+  "./gps.js",
+  "./storage.js",
+  "./gpx.js",
+  "./manifest.webmanifest",
+  "./assets/logo.svg",
+  "./assets/icon-192.svg",
+  "./assets/icon-512.svg",
+  "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css",
+  "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js",
+  "https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Noto+Sans+Khmer:wght@400;700&display=swap"
 ];
 
-self.addEventListener('install', e => {
-  e.waitUntil(
-    caches.open(STATIC_CACHE).then(cache => {
-      return Promise.allSettled(STATIC_ASSETS.map(url => cache.add(url).catch(() => {})));
-    }).then(() => self.skipWaiting())
+function isOsmTileRequest(url) {
+  return url.origin === "https://tile.openstreetmap.org"
+    || url.origin === "https://a.tile.openstreetmap.org"
+    || url.origin === "https://b.tile.openstreetmap.org"
+    || url.origin === "https://c.tile.openstreetmap.org"
+    || url.origin === "https://tile-cyclosm.openstreetmap.fr";
+}
+
+function isGoogleTileRequest(url) {
+  return url.origin === "https://tile.googleapis.com";
+}
+
+function isStaticRequest(requestUrl) {
+  return APP_SHELL.includes(requestUrl)
+    || requestUrl.includes("unpkg.com/leaflet")
+    || requestUrl.includes("fonts.googleapis.com")
+    || requestUrl.includes("fonts.gstatic.com");
+}
+
+async function pruneCache(cacheName, maxEntries) {
+  const cache = await caches.open(cacheName);
+  const keys = await cache.keys();
+  if (keys.length <= maxEntries) return;
+  await Promise.all(keys.slice(0, keys.length - maxEntries).map(key => cache.delete(key)));
+}
+
+self.addEventListener("install", event => {
+  event.waitUntil(
+    caches.open(STATIC_CACHE)
+      .then(cache => Promise.allSettled(APP_SHELL.map(url => cache.add(url))))
+      .then(() => self.skipWaiting())
   );
 });
 
-self.addEventListener('activate', e => {
-  e.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => !k.startsWith(CACHE_VERSION)).map(k => caches.delete(k)))
-    ).then(() => self.clients.claim())
+self.addEventListener("activate", event => {
+  event.waitUntil(
+    caches.keys()
+      .then(keys => Promise.all(keys
+        .filter(key => key !== STATIC_CACHE && key !== TILE_CACHE)
+        .map(key => caches.delete(key))))
+      .then(() => self.clients.claim())
   );
 });
 
-self.addEventListener('fetch', e => {
-  const url = e.request.url;
-  // Map tiles — cache-first with network fallback, long TTL
-  if (url.includes('tile-cyclosm') || url.includes('openstreetmap') || url.includes('tile.')) {
-    e.respondWith(
-      caches.open(TILES_CACHE).then(cache =>
-        cache.match(e.request).then(cached => {
-          if (cached) return cached;
-          return fetch(e.request).then(res => {
-            if (res.ok) cache.put(e.request, res.clone());
-            return res;
-          }).catch(() => cached || new Response('', { status: 503 }));
-        })
-      )
-    );
+self.addEventListener("fetch", event => {
+  if (event.request.method !== "GET") return;
+  const url = new URL(event.request.url);
+
+  if (isGoogleTileRequest(url)) {
+    event.respondWith(fetch(event.request));
     return;
   }
-  // Static assets (Leaflet, fonts) — cache-first
-  if (STATIC_ASSETS.some(a => url.startsWith(a)) || url.includes('fonts.g') || url.includes('unpkg.com')) {
-    e.respondWith(
-      caches.open(STATIC_CACHE).then(cache =>
-        cache.match(e.request).then(cached => {
-          if (cached) return cached;
-          return fetch(e.request).then(res => {
-            if (res.ok) cache.put(e.request, res.clone());
-            return res;
-          }).catch(() => cached);
+
+  if (isOsmTileRequest(url)) {
+    event.respondWith((async () => {
+      const cache = await caches.open(TILE_CACHE);
+      const cached = await cache.match(event.request);
+      const networkFetch = fetch(event.request)
+        .then(response => {
+          if (response.ok) {
+            cache.put(event.request, response.clone());
+            pruneCache(TILE_CACHE, TILE_CACHE_LIMIT);
+          }
+          return response;
         })
-      )
-    );
+        .catch(() => cached || new Response("", { status: 503, statusText: "Tile unavailable" }));
+      return cached || networkFetch;
+    })());
     return;
   }
-  // Default — network with cache fallback
-  e.respondWith(
-    fetch(e.request).catch(() => caches.match(e.request))
-  );
+
+  if (event.request.mode === "navigate") {
+    event.respondWith(caches.match("./index.html").then(cached => cached || fetch(event.request)));
+    return;
+  }
+
+  if (isStaticRequest(url.href) || url.origin === self.location.origin) {
+    event.respondWith((async () => {
+      const cache = await caches.open(STATIC_CACHE);
+      const cached = await cache.match(event.request);
+      if (cached) return cached;
+      try {
+        const response = await fetch(event.request);
+        if (response.ok) {
+          cache.put(event.request, response.clone());
+        }
+        return response;
+      } catch {
+        return cached || new Response("", { status: 503, statusText: "Asset unavailable" });
+      }
+    })());
+  }
 });
