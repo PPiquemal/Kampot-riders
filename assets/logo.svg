@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">Kampot Riders logo</title>
+  <desc id="desc">Cycling badge with KR initials</desc>
+  <defs>
+    <linearGradient id="gold" x1="0%" x2="100%" y1="0%" y2="100%">
+      <stop offset="0%" stop-color="#f0c35e"/>
+      <stop offset="100%" stop-color="#b17d16"/>
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="28" fill="#1a0a0a"/>
+  <circle cx="64" cy="64" r="52" fill="none" stroke="url(#gold)" stroke-width="6"/>
+  <path d="M34 78h10l9-18 13 18h13L63 54l13-21H64L52 52l-8-11H32l13 18-11 19z" fill="#f0e8dc"/>
+  <path d="M28 88h72" stroke="#c42030" stroke-width="6" stroke-linecap="round"/>
+</svg>
