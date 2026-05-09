@@ -60,6 +60,13 @@ input {
   -webkit-text-fill-color: transparent;
 }
 
+.release-tag {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  vertical-align: middle;
+}
+
 .header-left,
 .header-right {
   display: flex;
