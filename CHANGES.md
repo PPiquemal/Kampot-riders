@@ -1,12 +1,13 @@
 # Kampot Riders — Patch summary
 
 ## Identity restored
-- **New PNG icon set** generated from the legacy seahorse:
-  - `assets/icon-192.png` / `icon-512.png` (purpose: any) — rounded brown square, full logo
-  - `assets/icon-192-maskable.png` / `icon-512-maskable.png` (purpose: maskable) — full-bleed brown background, logo within central 60% safe zone for circular/squircle masks (Pixel etc.)
-  - `assets/logo.png` — transparent seahorse on square canvas, used for header and splash
-  - `assets/favicon-32.png` — simplified seahorse-on-bike for browser tab
+- **New PNG icon set** generated from the legacy seahorse, **keeping the original white background** (Pascal's preference — better contrast and readability than transparent):
+  - `assets/icon-192.png` / `icon-512.png` (purpose: any) — white background, rounded corners (the OS-level mask hides the corners gracefully)
+  - `assets/icon-192-maskable.png` / `icon-512-maskable.png` (purpose: maskable) — full-bleed white background, logo within central 62% safe zone for circular/squircle masks (Pixel etc.)
+  - `assets/logo.png` — original legacy PNG (white bg, full text), used unchanged for header and splash
+  - `assets/favicon-32.png` — full legacy resampled to 32×32; text becomes blurry but the seahorse silhouette stays recognizable
 - The legacy SVG icons are removed from the manifest and service worker (they were a placeholder "X").
+- **PWA `background_color`** in the manifest changed from `#1a0a0a` to `#ffffff` so the white logo fits seamlessly on the install/splash screen on Android. `theme_color` stays brown for the status bar.
 
 ## Bug fix
 - `index.html` referenced `./legacy/legacy-icon-192.png` but the file is at `./assets/legacy/...` — header and splash logos were broken in the refactor. Now both point to `./assets/logo.png`.
