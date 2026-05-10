@@ -219,7 +219,7 @@ input {
 }
 
 .layer-selector {
-  top: 88px;
+  top: 12px;
   right: 12px;
   left: auto;
   display: flex;
