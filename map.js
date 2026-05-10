@@ -1,5 +1,7 @@
 const DEFAULT_CENTER = [10.594, 104.162];
 const DEFAULT_ZOOM = 14;
+const SATELLITE_MAX_ZOOM = 18;
+const SATELLITE_INFO_NOTICE = "Esri Satellite imagery is older than Google's, with limited zoom. Free tiles, no API key required.";
 
 function layerLabel(layerId) {
   if (layerId === "osm") return "OSM map";
@@ -38,6 +40,7 @@ export function createMapController({ selectedLayerId, onLayerSelected, onNotice
     weight: 1,
     opacity: 0.2
   });
+  let positionMarkersAdded = false;
 
   const cycleLayer = L.tileLayer("https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png", {
     maxZoom: 19,
@@ -47,8 +50,10 @@ export function createMapController({ selectedLayerId, onLayerSelected, onNotice
     maxZoom: 19,
     attribution: "&copy; OpenStreetMap contributors"
   });
+  // Esri World Imagery: free, no API key. Imagery is generally older than Google's,
+  // and zoom beyond 18 is typically blank or stale, so we cap maxZoom accordingly.
   const satelliteLayer = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
-    maxZoom: 19,
+    maxZoom: SATELLITE_MAX_ZOOM,
     attribution: "Tiles &copy; Esri"
   });
 
@@ -121,9 +126,27 @@ export function createMapController({ selectedLayerId, onLayerSelected, onNotice
     }
     activeLayerId = requested;
     layers[activeLayerId].addTo(map);
+
+    // Clamp current zoom to the new layer's maxZoom so users don't end up
+    // staring at a blank screen when switching to satellite from a deep zoom.
+    const layerMaxZoom = layers[activeLayerId].options.maxZoom;
+    if (layerMaxZoom != null && map.getZoom() > layerMaxZoom) {
+      map.setZoom(layerMaxZoom);
+    }
+
     closeLayerMenu();
     setLayerButtonState(activeLayerId);
     updateOfflineBadge();
+
+    // Inform the user — once per explicit selection — about Esri's limits.
+    if (!silent && activeLayerId === "satellite") {
+      onNotice({
+        text: SATELLITE_INFO_NOTICE,
+        actionLabel: "",
+        actionLayerId: ""
+      });
+    }
+
     if (!silent) onLayerSelected(activeLayerId);
   }
 
@@ -155,8 +178,13 @@ export function createMapController({ selectedLayerId, onLayerSelected, onNotice
       autoFollow = value;
     },
     setCurrentPosition(lat, lng, accuracy) {
-      posMarker.setLatLng([lat, lng]).addTo(map);
-      accCircle.setLatLng([lat, lng]).setRadius(accuracy).addTo(map);
+      posMarker.setLatLng([lat, lng]);
+      accCircle.setLatLng([lat, lng]).setRadius(accuracy);
+      if (!positionMarkersAdded) {
+        posMarker.addTo(map);
+        accCircle.addTo(map);
+        positionMarkersAdded = true;
+      }
       if (!initialZoomDone) {
         initialZoomDone = true;
         map.setView([lat, lng], 15, { animate: true });
@@ -192,7 +220,8 @@ export function createMapController({ selectedLayerId, onLayerSelected, onNotice
       document.getElementById("splash").classList.add("hidden");
     },
     showSplashStatus(message) {
-      document.getElementById("splashStatus").textContent = message;
+      const node = document.getElementById("splashStatus");
+      if (node) node.textContent = message;
     }
   };
 }

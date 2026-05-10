@@ -60,13 +60,6 @@ input {
   -webkit-text-fill-color: transparent;
 }
 
-.release-tag {
-  font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  vertical-align: middle;
-}
-
 .header-left,
 .header-right {
   display: flex;
@@ -384,9 +377,10 @@ input {
 }
 
 .splash-logo {
-  width: 72px;
-  height: 72px;
+  width: 96px;
+  height: 96px;
   margin-bottom: 16px;
+  animation: splashFadeUp 0.5s 0s ease both;
 }
 
 .splash-title {
@@ -394,12 +388,48 @@ input {
   font-weight: 800;
   color: var(--gold);
   letter-spacing: 0.06em;
+  animation: splashFadeUp 0.5s 0.15s ease both;
 }
 
-.splash-status {
-  margin-top: 8px;
+.splash-sub {
+  font-size: 0.75rem;
+  font-weight: 600;
   color: var(--text-dim);
-  font-size: 0.85rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  margin-top: 4px;
+  animation: splashFadeUp 0.5s 0.25s ease both;
+}
+
+.splash-gps {
+  margin-top: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  font-weight: 500;
+  animation: splashFadeUp 0.5s 0.4s ease both;
+}
+
+.splash-gps-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--gold-dim);
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes splashFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .stats-panel {
@@ -548,6 +578,11 @@ input {
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
+}
+
+.btn-secondary svg {
+  width: 22px;
+  height: 22px;
 }
 
 .toast {

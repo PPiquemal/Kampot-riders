@@ -23,6 +23,7 @@ const SPEED_THRESHOLD = 1.5;
 const GPS_GAP_THRESHOLD_MS = 45000;
 const MAX_SEGMENT_DISTANCE = 500;
 const AUTOSAVE_INTERVAL = 10000;
+const SPLASH_FALLBACK_TIMEOUT_MS = 8000;
 
 const state = {
   recording: false,
@@ -43,7 +44,8 @@ const state = {
   wakeLock: null,
   interruptionCount: 0,
   referenceRide: null,
-  selectedLayer: loadSelectedLayer() || "cycle"
+  selectedLayer: loadSelectedLayer() || "cycle",
+  splashDismissed: false
 };
 
 const $ = id => document.getElementById(id);
@@ -137,6 +139,12 @@ function showMapNotice({ text, actionLabel, actionLayerId }) {
 function hideMapNotice() {
   dom.mapNotice.classList.add("hidden");
   dom.mapNoticeAction.onclick = null;
+}
+
+function dismissSplashOnce() {
+  if (state.splashDismissed) return;
+  state.splashDismissed = true;
+  mapController.dismissSplash();
 }
 
 function updateStats() {
@@ -271,7 +279,7 @@ function saveLayerSelection(layerId) {
   state.selectedLayer = layerId;
   saveSelectedLayer(layerId);
   dom.activeLayerLabel.textContent = layerId === "satellite" ? "Satellite" : layerId === "osm" ? "OSM map" : "Cycle map";
-  hideMapNotice();
+  // Don't hide the notice on selection — for satellite, the notice IS triggered by the selection.
   if (state.recording) autosaveRecordingState();
 }
 
@@ -288,15 +296,27 @@ function updateGpsIndicator(accuracy) {
   }
 }
 
+function updateSplashStatus(accuracy) {
+  if (state.splashDismissed) return;
+  if (accuracy <= MIN_ACCURACY) {
+    mapController.showSplashStatus(`GPS locked · ±${Math.round(accuracy)}m`);
+  } else {
+    mapController.showSplashStatus(`Acquiring GPS… ±${Math.round(accuracy)}m`);
+  }
+}
+
 function onPosition(position) {
   const { latitude: lat, longitude: lng, altitude: rawAlt, accuracy, speed: rawSpeed } = position.coords;
   const time = position.timestamp;
 
   updateGpsIndicator(accuracy);
+  updateSplashStatus(accuracy);
+
   if (accuracy > MIN_ACCURACY) return;
 
   state.currentPos = { lat, lng };
-  mapController.dismissSplash();
+  // First valid fix dismisses the splash; the fallback timer is a safety net.
+  dismissSplashOnce();
   mapController.setCurrentPosition(lat, lng, accuracy);
 
   const altitude = rawAlt != null ? smoothAltitude(rawAlt) : state.currentAlt;
@@ -384,7 +404,9 @@ function onPosition(position) {
 function onPositionError() {
   dom.gpsDot.className = "gps-dot poor";
   dom.gpsText.textContent = "GPS unavailable";
-  if (mapController) mapController.showSplashStatus("GPS unavailable — check permissions");
+  if (mapController && !state.splashDismissed) {
+    mapController.showSplashStatus("GPS unavailable — check permissions");
+  }
 }
 
 function buildRecoveryStats(snapshot) {
@@ -690,7 +712,9 @@ async function init() {
   setStatus("idle");
   updateStats();
   checkRecovery();
-  window.setTimeout(() => mapController.dismissSplash(), 4000);
+  // Safety fallback: if no valid GPS fix arrives within the timeout, dismiss the
+  // splash anyway so the user can interact with the map and tracks UI.
+  window.setTimeout(dismissSplashOnce, SPLASH_FALLBACK_TIMEOUT_MS);
 }
 
 dom.btnRecord.addEventListener("click", () => {

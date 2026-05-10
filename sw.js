@@ -1,4 +1,4 @@
-const CACHE_VERSION = "kr-v7";
+const CACHE_VERSION = "kr-v8";
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const TILE_CACHE = `${CACHE_VERSION}-osm-tiles`;
 const TILE_CACHE_LIMIT = 250;
@@ -13,9 +13,12 @@ const APP_SHELL = [
   "./storage.js",
   "./gpx.js",
   "./manifest.webmanifest",
-  "./assets/logo.svg",
-  "./assets/icon-192.svg",
-  "./assets/icon-512.svg",
+  "./assets/logo.png",
+  "./assets/favicon-32.png",
+  "./assets/icon-192.png",
+  "./assets/icon-512.png",
+  "./assets/icon-192-maskable.png",
+  "./assets/icon-512-maskable.png",
   "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css",
   "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js",
   "https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Noto+Sans+Khmer:wght@400;700&display=swap"
@@ -26,11 +29,14 @@ function isOsmTileRequest(url) {
     || url.origin === "https://a.tile.openstreetmap.org"
     || url.origin === "https://b.tile.openstreetmap.org"
     || url.origin === "https://c.tile.openstreetmap.org"
-    || url.origin === "https://tile-cyclosm.openstreetmap.fr";
+    || url.origin === "https://tile-cyclosm.openstreetmap.fr"
+    || url.origin === "https://a.tile-cyclosm.openstreetmap.fr"
+    || url.origin === "https://b.tile-cyclosm.openstreetmap.fr"
+    || url.origin === "https://c.tile-cyclosm.openstreetmap.fr";
 }
 
-function isGoogleTileRequest(url) {
-  return url.origin === "https://tile.googleapis.com";
+function isEsriTileRequest(url) {
+  return url.origin === "https://server.arcgisonline.com";
 }
 
 function isStaticRequest(requestUrl) {
@@ -69,12 +75,7 @@ self.addEventListener("fetch", event => {
   if (event.request.method !== "GET") return;
   const url = new URL(event.request.url);
 
-  if (isGoogleTileRequest(url)) {
-    event.respondWith(fetch(event.request));
-    return;
-  }
-
-  if (isOsmTileRequest(url)) {
+  if (isOsmTileRequest(url) || isEsriTileRequest(url)) {
     event.respondWith((async () => {
       const cache = await caches.open(TILE_CACHE);
       const cached = await cache.match(event.request);
